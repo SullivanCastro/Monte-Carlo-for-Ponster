@@ -7,10 +7,6 @@ from cProfile import label
 import multiprocessing
 from tqdm import tqdm
 import pickle
-import vanilla
-
-h = vanilla.Hub()
-sender, recver = h.pipe()
 
 # global parameters
 
