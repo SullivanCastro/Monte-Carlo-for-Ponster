@@ -1,9 +1,10 @@
 import numpy as np
 from numpy.random import normal
 import pickle
+import logging
 
 # global parameters
-
+logging.basicConfig(filename='montecarlog.log', encoding='utf-8', level=logging.DEBUG)
 S0 = 100  # price at time 0
 K = S0  # Strike
 R = 0.0001  # interest rate
@@ -44,8 +45,10 @@ payoff_exp = list(map(put, s))
 def Monte_Carlo(M, payoff_list):
     return 1 / M * np.sum(payoff_list[:M])
 
-
-MC = list(map(Monte_Carlo, np.arange(1, T_rep, 1), [payoff_exp] * (T_rep - 1)))
+try:
+    MC = list(map(Monte_Carlo, np.arange(1, T_rep, 1), [payoff_exp] * (T_rep - 1)))
+except:
+    logging.warning('Time exceeded')
 
 with open("monte_carlo_result.pkl", "wb") as f:
     pickle.dump(MC, f)
