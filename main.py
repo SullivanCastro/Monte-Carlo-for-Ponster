@@ -1,5 +1,6 @@
 import numpy as np
 from numpy.random import normal
+from multiprocessing import Pool
 import pickle
 import logging
 
@@ -59,7 +60,8 @@ def Monte_Carlo(M):
 
 
 try:
-    MC = list(map(Monte_Carlo, np.arange(1, T_rep, 1), [payoff_exp] * (T_rep - 1)))
+    with Pool(32) as p:
+        MC = p.map(Monte_Carlo, np.arange(1, T_rep))
 except:
     logging.warning("Time exceeded")
 
