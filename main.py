@@ -54,13 +54,13 @@ def call(x):
 payoff_exp = put(s)
 
 
-@np.vectorize
+
 def Monte_Carlo(M):
     return np.mean(payoff_exp[:M])
 
 
 try:
-    with Pool(32) as p:
+    with Pool(15) as p:
         MC = p.map(Monte_Carlo, np.arange(1, T_rep))
 except:
     logging.warning("Time exceeded")
