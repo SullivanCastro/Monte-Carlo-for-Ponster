@@ -28,7 +28,7 @@ def W(t):
     return W_motion
 
 
-@np.vectorize
+
 def S(t):
     brown_motion = W(t)
     s = 1 + R + SIGMA * (brown_motion[1:] - brown_motion[:-1])
@@ -37,8 +37,8 @@ def S(t):
         s[k] *= s[k - 1]
     return s[-1]
 
-
-s = S(np.full((T_rep,), T))
+with Pool(15) as p:
+    s = np.array(S, np.full((T_rep,), T))
 
 
 @np.vectorize
@@ -61,7 +61,7 @@ def Monte_Carlo(M):
 
 try:
     with Pool(15) as p:
-        MC = p.map(Monte_Carlo, np.arange(1, T_rep))
+        MC = list(p.map(Monte_Carlo, np.arange(1, T_rep)))
 except:
     logging.warning("Time exceeded")
 
