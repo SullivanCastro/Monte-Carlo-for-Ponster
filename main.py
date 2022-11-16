@@ -1,6 +1,5 @@
 import numpy as np
 from numpy.random import normal
-from tqdm import tqdm
 import pickle
 import logging
 
@@ -30,18 +29,15 @@ def W(t):
 
 @np.vectorize
 def S(t):
-    global pbar
     brown_motion = W(t)
     s = 1 + R + SIGMA * (brown_motion[1:] - brown_motion[:-1])
     s = np.insert(s, 0, S0)
     for k in range(1, t):
         s[k] *= s[k - 1]
-    pbar.update(1)
     return s[-1]
 
 
-with tqdm(total=T_rep) as pbar:
-    s = S(np.full((T_rep,), T))
+s = S(np.full((T_rep,), T))
 
 
 @np.vectorize
@@ -59,8 +55,6 @@ payoff_exp = put(s)
 
 @np.vectorize
 def Monte_Carlo(M):
-    global pbar
-    pbar.update(1)
     return np.mean(payoff_exp[:M])
 
 
