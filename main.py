@@ -11,7 +11,7 @@ K = S0  # Strike
 R = 0.0001  # interest rate
 SIGMA = 0.05  # volatility
 T = 100  # Maturity
-T_rep = 10**8
+T_rep = 10**5
 X = np.linspace(0, T, T)  # abscisse
 Y = np.linspace(0, T_rep, T_rep)
 MU_STANDARD = 0  # mean
@@ -28,7 +28,7 @@ def W(t):
     return W_motion
 
 
-
+@np.vectorize
 def S(t):
     brown_motion = W(t)
     s = 1 + R + SIGMA * (brown_motion[1:] - brown_motion[:-1])
@@ -37,33 +37,28 @@ def S(t):
         s[k] *= s[k - 1]
     return s[-1]
 
-with Pool(15) as p:
-    s = np.array(S, np.full((T_rep,), T))
+
+s = S(np.full((T_rep,), T))
 
 
 @np.vectorize
 def put(x):
-    return max(x - K, 0)
-
-
-@np.vectorize
-def call(x):
-    return max(K - x, 0)
+    return np.max(x - K, 0)
 
 
 payoff_exp = put(s)
 
 
-
+@np.vectorize
 def Monte_Carlo(M):
     return np.mean(payoff_exp[:M])
 
 
+MC = np.arange(1, T_rep)
 try:
-    with Pool(15) as p:
-        MC = list(p.map(Monte_Carlo, np.arange(1, T_rep)))
-except:
-    logging.warning("Time exceeded")
+    MC = Monte_Carlo(np.arange(1, T_rep))
+except Exception as e:
+    logging.warning(e)
 
 with open("monte_carlo_result.pkl", "wb") as f:
-    pickle.dump(MC, f)
+    np.save(f, MC)
