@@ -1,7 +1,5 @@
 import numpy as np
-from numpy.random import normal
-from multiprocessing import Pool
-import pickle
+import torch
 import logging
 
 # global parameters
@@ -11,52 +9,48 @@ K = S0  # Strike
 R = 0.0001  # interest rate
 SIGMA = 0.05  # volatility
 T = 100  # Maturity
-T_rep = 10**5
-X = np.linspace(0, T, T)  # abscisse
-Y = np.linspace(0, T_rep, T_rep)
+T_rep = 10**7
+X = np.arange(0, T)  # abscisse
+Y = np.arange(0, T_rep)
 MU_STANDARD = 0  # mean
 SIGMA_STANDARD = 1  # standard deviation
 STEP = 500
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-@np.vectorize
 def W(t):
-    W_motion = normal(MU_STANDARD, SIGMA_STANDARD, size=t)
+    W_motion = torch.randn(size=(t,)).to(device)
     W_motion[0] = 0
-    for k in range(1, t):
-        W_motion[k] += W_motion[k - 1]
-    return W_motion
+    S_M = torch.tril(torch.ones((t, t))).to(device)
+    return torch.matmul(S_M, W_motion)
 
 
-@np.vectorize
 def S(t):
     brown_motion = W(t)
     s = 1 + R + SIGMA * (brown_motion[1:] - brown_motion[:-1])
-    s = np.insert(s, 0, S0)
-    for k in range(1, t):
-        s[k] *= s[k - 1]
-    return s[-1]
+    S_ini = torch.tensor([S0]).to(device)
+    s = torch.cat((S_ini, s))
+    return torch.prod(s)
 
 
-s = S(np.full((T_rep,), T))
+s = torch.tensor([S(T) for _ in range(T_rep)])
 
 
 @np.vectorize
 def put(x):
-    return np.max(x - K, 0)
+    return torch.max(x - K, 0)
 
 
 payoff_exp = put(s)
 
 
-@np.vectorize
 def Monte_Carlo(M):
-    return np.mean(payoff_exp[:M])
+    return torch.mean(payoff_exp[:M]).item()
 
 
 MC = np.arange(1, T_rep)
 try:
-    MC = Monte_Carlo(np.arange(1, T_rep))
+    MC = [Monte_Carlo(k) for k in range(1, T_rep)]
 except Exception as e:
     logging.warning(e)
 
