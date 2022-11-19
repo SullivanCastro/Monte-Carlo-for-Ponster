@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+from math import *
 import logging
 
 # global parameters
@@ -9,48 +10,58 @@ K = S0  # Strike
 R = 0.0001  # interest rate
 SIGMA = 0.05  # volatility
 T = 100  # Maturity
-T_rep = 10**7
+T_rep = 10**8
 X = np.arange(0, T)  # abscisse
 Y = np.arange(0, T_rep)
 MU_STANDARD = 0  # mean
 SIGMA_STANDARD = 1  # standard deviation
 STEP = 500
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")
+
+# Brownian path
+def W_traj(t):
+    W_motion = torch.randn(t).to(device)
+    W_motion[0] = 0
+    return torch.cumsum(W_motion, dim=0)
 
 
+# Brownian endpoint
 def W(t):
     W_motion = torch.randn(size=(t,)).to(device)
     W_motion[0] = 0
-    S_M = torch.tril(torch.ones((t, t))).to(device)
-    return torch.matmul(S_M, W_motion)
+    return torch.sum(W_motion).item()
 
 
-def S(t):
-    brown_motion = W(t)
+# Monte Carlo algorithm
+def Monte_Carlo(sample):
+    t = sample.shape[0]
+    sample = torch.cumsum(sample, dim=0)
+    return sample / (1 + torch.arange(t))
+
+
+# Pricing calculus by Euler's path
+def S(t: int):
+    brown_motion = W_traj(t)
     s = 1 + R + SIGMA * (brown_motion[1:] - brown_motion[:-1])
     S_ini = torch.tensor([S0]).to(device)
     s = torch.cat((S_ini, s))
-    return torch.prod(s)
+    return torch.prod(s).item()
 
 
-s = torch.tensor([S(T) for _ in range(T_rep)])
+# put caluclus
+def put(s):
+    ReLU = torch.nn.ReLU()
+    return ReLU(s - K * np.ones_like(s))
 
 
-@np.vectorize
-def put(x):
-    return torch.max(x - K, 0)
+s = torch.zeros(T_rep)
+for k in range(T_rep):
+    s[k] = S(T)
 
+payoff = put(s)
 
-payoff_exp = put(s)
-
-
-def Monte_Carlo(M):
-    return torch.mean(payoff_exp[:M]).item()
-
-
-MC = np.arange(1, T_rep)
 try:
-    MC = [Monte_Carlo(k) for k in range(1, T_rep)]
+    MC = Monte_Carlo(payoff).detach().numpy()
 except Exception as e:
     logging.warning(e)
 
